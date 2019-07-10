@@ -1,0 +1,18 @@
+{
+  "name": "shroomchat",
+  "version": "1.0.0",
+  "description": "a socket based chat room with end to end encryption",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^3.0.6",
+    "express": "^4.17.1",
+    "js-sha3": "^0.8.0",
+    "openpgp": "^4.5.5",
+    "socket.io": "^2.2.0"
+  }
+}
