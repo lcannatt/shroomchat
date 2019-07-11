@@ -1,0 +1,31 @@
+.main{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+}
+.center{
+    width:50vw;
+    height:50vh;
+    margin:auto;
+}
+.chat-container{
+    top:0;
+    left:0;
+    height:inherit;
+    position:relative;
+    background-color: beige;
+}
+.chat-inputs{
+    position: absolute;
+    bottom:0;
+    left:0;
+    right:0;
+    max-height: 30%;
+    background-color: burlywood;
+    overflow:none;
+}
+.nodisplay{
+    display:none;
+}

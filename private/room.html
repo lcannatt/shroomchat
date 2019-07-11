@@ -8,11 +8,39 @@
 	<link rel="stylesheet" type="text/css" media="screen" href="/main.css" />
 </head>
 <body>
-	<input type="button" id="auth" value="auth">
-	<input type="button" id="msg" value="msg">
-	<script src="/scripts/socket.io.js"></script>
-	<script src="/scripts/openpgp.min.js"></script>
-	<script src="/scripts/sha3.min.js"></script>
-	<script src="/client.js"></script>
+	<div id="login">
+		<h1>Login</h1>
+		<form id='room-login' action="javascript:void()">
+			<label for="password">Room Key</label>
+			<input type="password" id="password" name="password">
+			<label for="nick">Nickname</label>
+			<input type="text" id="nick" name="nick">
+			<br>
+			<input type="submit" id="auth" value="Log In">
+			<input type="button" id="msg" value="msg">
+		</form>
+		
+	</div>
+	<div class="nodisplay" id="main">
+		<div class="center">
+			<div class="chat-container">
+				<div class="messages">
+	
+				</div>
+				<div class="chat-inputs">
+					<form id="chat" action="javascript:void()">
+						<textarea name="message" id="message"></textarea>
+						<input type="button" name="send" id="send" value="Send">
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+	<footer>
+		<script src="/scripts/socket.io.js"></script>
+		<script src="/scripts/openpgp.min.js"></script>
+		<script src="/scripts/sha3.min.js"></script>
+		<script src="/client.js"></script>
+	</footer>
 </body>
 </html>

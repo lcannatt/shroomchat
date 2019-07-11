@@ -4,6 +4,7 @@ var app=express();
 var server = http.createServer(app).listen(3000);
 var io=require("socket.io")(server);
 var bcrypt=require("bcrypt");
+var crypto=require("crypto");
 // var fs=require('fs');
 var path=require('path');
 
@@ -28,7 +29,8 @@ app.get('/scripts/sha3.min.js',function(req,res){
 //Socket handling
 var rooms={
 	testroom:{
-		passHash:'$2b$10$EvTUHZGyQSC.jpPKhquaYOk5r9mc.fZTlThEdVy/0CAA7eUNKHXOO',
+		salt:'e27b79c799253a0aa42579fb5c804586',
+		passHash:'$2b$10$zDRkdwmlTCeR.wNc8nw.WOPzsUE2C7XQm9PHD/2RCG.NkYgQa.WUS',
 		active:0
 	}
 }
@@ -39,7 +41,8 @@ async function authorize(authObject,socket){
 		const match = await bcrypt.compare(authObject.password,rooms[authObject.room].passHash);
 		if(match){
 			socket.join(authObject.room);
-			socket.emit('authOk',`Joining Room ${authObject.room}`);
+			socket.emit('authOK',`Joining Room ${authObject.room}`);
+			console.log('auth ok')
 		}else{
 			socket.emit('authError');
 			console.log('incorrect roomkey');
@@ -50,8 +53,19 @@ async function authorize(authObject,socket){
 	}
 }
 
+function generateSalt(){
+	return crypto.randomBytes(32).toString('hex').slice(0,32);
+}
 
 io.on("connection",function(socket){
+	socket.on("handshake",function(msg){
+		obj=JSON.parse(msg);
+		if(rooms.hasOwnProperty(obj.id)){
+			socket.emit("handshake",rooms[obj.id].salt)
+		}else{
+			socket.emit("handshake",generateSalt())
+		}
+	})
 	socket.on("auth",function(message){
 		console.log(socket.id)
 		authorize(JSON.parse(message),socket);
@@ -60,7 +74,6 @@ io.on("connection",function(socket){
 		console.log(`chat: ${message}`);
 		socket.emit('message',message)
 	})
-	socket.emit('message','socket is active');
 });
 
-console.log("starting socket app on pport 3000")
+console.log("starting socket app on port 3000")
