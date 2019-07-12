@@ -15,7 +15,7 @@
     left:0;
     height:inherit;
     position:relative;
-    background-color: beige;
+	background-color: beige;
 }
 .chat-inputs{
     position: absolute;
@@ -31,6 +31,9 @@
     height:100%!important;
     width:100%!important;
     box-sizing: border-box;
+}
+.messages{
+	overflow-y:scroll;
 }
 .chat-ui{
     width:100%;

@@ -22,14 +22,16 @@
 		socket.emit('handshake',JSON.stringify({id:roomId}));
 	});
 	socket.on("disconnect",function(){
-		console.log("disconnected");
+		console.log('disconnected');
 	});
 	socket.on('handshake',function(serverSalt){
 		salt=serverSalt;
 		console.log('room hash salt recieved from server: '+salt);
 	})
-	socket.on("message",function(payload){
-		console.log(payload);
+	socket.on("message",async function(payload){
+		let pgpObject=JSON.parse(payload);
+		let data = await decrypt(pgpObject);
+		recieveChat(data);
 	});
 	socket.on("authError",function(){
 		console.log("cant auth")
@@ -37,9 +39,30 @@
 	socket.on("authOK",function(message){
 		openChat();
 	});
+	
+	async function sendChat(){
+		let input=document.querySelector('#message');
+		let encrypted='';
+		if(input){
+			let formatted=JSON.stringify({
+				nickname:nickname,
+				timestamp:Date.now(),
+				message:input.value,
+			});
+			encrypted=await encrypt(formatted);
+		}
+		let data={
+			room:roomId,
+			password:hash,
+			message:encrypted
+		}
+		console.log(data);
+		socket.emit('chat',JSON.stringify(data));
+		return true;
+	}
 	/*
 	*
-	* Crypto Related
+	* Crypto functions
 	*
 	*/
 
@@ -57,9 +80,22 @@
 	async function encrypt(msg){
 		let options={
 			message:openpgp.message.fromText(msg),
-			passwords:[pwd],
+			passwords:[pwd]
 		}
 		return(openpgp.encrypt(options));
+	}
+	async function decrypt(pgpObject){
+		let message = await openpgp.message.readArmored(pgpObject.data)
+		let sk= await openpgp.decryptSessionKeys({
+			message:message,
+			passwords:pwd
+		});
+		let dc= await openpgp.decrypt({
+			sessionKeys:sk[0],
+			message:message
+		})
+		return JSON.parse(dc.data);
+
 	}
 
 
@@ -79,24 +115,15 @@
 		if(!chatInit){initChatListeners();}
 
 	}
-	async function sendChat(){
+	function clearInput(){
 		let input=document.querySelector('#message');
-		let encrypted='';
 		if(input){
-			let formatted=JSON.stringify({
-				nickname:nickname,
-				timestamp:Date.now(),
-				message:input.value,
-			});
-			encrypted=await encrypt(formatted);
+			input.value='';
 		}
-		let data={
-			room:roomId,
-			password:hash,
-			message:encrypted
-		}
-		console.log(data);
-		socket.emit('chat',JSON.stringify(data));
+	}
+	
+	function recieveChat({nickname,timestamp,message}){
+		console.log(message);
 	}
 	function initChatListeners(){
 		document.addEventListener('keyup',function(e){
@@ -107,9 +134,10 @@
 				}
 			}
 		});
-		document.addEventListener('click',function(e){
+		document.addEventListener('click',async function(e){
 			if(e.target.id==="send"){
-				sendChat();
+				let sent=await sendChat()
+				if(sent){clearInput();}
 			}
 		});
 		chatInit=true;

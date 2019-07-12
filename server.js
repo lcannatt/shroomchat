@@ -27,17 +27,17 @@ app.get('/scripts/sha3.min.js',function(req,res){
 
 
 //Socket handling
-var rooms={
+var rooms={//initialized with room for testing.
 	testroom:{
 		salt:'e27b79c799253a0aa42579fb5c804586',
 		passHash:'$2b$10$zDRkdwmlTCeR.wNc8nw.WOPzsUE2C7XQm9PHD/2RCG.NkYgQa.WUS',
 		active:0
 	}
 }
+var sockets={};
 
 async function authorize(authObject){
 	if(rooms.hasOwnProperty(authObject.room)){
-		console.log(authObject.password,rooms[authObject.room].passHash);
 		const match = await bcrypt.compare(authObject.password,rooms[authObject.room].passHash);
 		if(match){
 			console.log('auth ok')
@@ -55,7 +55,21 @@ async function authorize(authObject){
 function generateSalt(){
 	return crypto.randomBytes(32).toString('hex').slice(0,32);
 }
-//Need to make sure rooms are correct, doesnt seem like they are right now.
+function disconnectCleanup(socket){
+	if(sockets.hasOwnProperty(socket.id)){
+		sockets[socket.id].forEach(function(name){
+			if(rooms.hasOwnProperty(name)){
+				rooms[name].active-=1; //Update room member counters
+				if(rooms[name].active==0){
+					delete rooms[name]; //Delete room if empty
+				}
+			}
+		});
+		delete sockets[socket.id];
+		//prume this socket from socket list.
+	}
+	return true;
+}
 io.on("connection",function(socket){
 	socket.on("handshake",function(msg){
 		obj=JSON.parse(msg);
@@ -66,11 +80,18 @@ io.on("connection",function(socket){
 		}
 	})
 	socket.on("auth",async function(message){
-		console.log(socket.id)
+		console.log(`Socket Authorizing - ${socket.id}`)
 		authObject=JSON.parse(message)
 		let success=await authorize(authObject);
 		if(success){
 			socket.join(authObject.room);
+			if(!sockets.hasOwnProperty(socket.id)){
+				sockets[socket.id]=Array(authObject.room)
+			}else{
+				sockets[socket.id].push(authObject.room);
+			}
+			rooms[authObject.room].active+=1;
+			console.log(sockets);
 			socket.emit('authOK',`Joining room ${authObject.room}`);
 		}else{
 			socket.emit('authError')
@@ -80,13 +101,18 @@ io.on("connection",function(socket){
 		console.log(`chat: ${message}`);
 		let messageObject=JSON.parse(message);
 		let authorized=await authorize(messageObject);
+		let content=JSON.stringify(messageObject.message);
 		if(authorized){
 			console.log(`sending message to ${messageObject.room}`);
-			socket.to(messageObject.room).emit('message',message);
+			socket.to(messageObject.room).emit('message',content);
+			socket.emit('message',content)
 		}
 	})
 	socket.on('disconnect', function(){
-		this.leaveAll();
+		disconnectCleanup(socket);
+		console.log(`socket disconnecting - ${socket.id}`);
+		console.log(rooms);
+		console.log(sockets);
 	})
 });
 
