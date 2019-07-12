@@ -35,28 +35,27 @@ var rooms={
 	}
 }
 
-async function authorize(authObject,socket){
+async function authorize(authObject){
 	if(rooms.hasOwnProperty(authObject.room)){
 		console.log(authObject.password,rooms[authObject.room].passHash);
 		const match = await bcrypt.compare(authObject.password,rooms[authObject.room].passHash);
 		if(match){
-			socket.join(authObject.room);
-			socket.emit('authOK',`Joining Room ${authObject.room}`);
 			console.log('auth ok')
+			return true;
 		}else{
-			socket.emit('authError');
 			console.log('incorrect roomkey');
+			return false;
 		}
 	}else{
 		console.log('room does not exist')
-		socket.emit('authError');
+		return false;
 	}
 }
 
 function generateSalt(){
 	return crypto.randomBytes(32).toString('hex').slice(0,32);
 }
-
+//Need to make sure rooms are correct, doesnt seem like they are right now.
 io.on("connection",function(socket){
 	socket.on("handshake",function(msg){
 		obj=JSON.parse(msg);
@@ -66,13 +65,28 @@ io.on("connection",function(socket){
 			socket.emit("handshake",generateSalt())
 		}
 	})
-	socket.on("auth",function(message){
+	socket.on("auth",async function(message){
 		console.log(socket.id)
-		authorize(JSON.parse(message),socket);
+		authObject=JSON.parse(message)
+		let success=await authorize(authObject);
+		if(success){
+			socket.join(authObject.room);
+			socket.emit('authOK',`Joining room ${authObject.room}`);
+		}else{
+			socket.emit('authError')
+		}
 	});
-	socket.on("chat",function(message){
+	socket.on("chat",async function(message){
 		console.log(`chat: ${message}`);
-		socket.emit('message',message)
+		let messageObject=JSON.parse(message);
+		let authorized=await authorize(messageObject);
+		if(authorized){
+			console.log(`sending message to ${messageObject.room}`);
+			socket.to(messageObject.room).emit('message',message);
+		}
+	})
+	socket.on('disconnect', function(){
+		this.leaveAll();
 	})
 });
 

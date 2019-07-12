@@ -26,6 +26,20 @@
     background-color: burlywood;
     overflow:none;
 }
+#message{
+    resize:none;
+    height:100%!important;
+    width:100%!important;
+    box-sizing: border-box;
+}
+.chat-ui{
+    width:100%;
+    height:100%;
+    margin:0;
+}
+.chat-ui{
+    text-align: center;
+}
 .nodisplay{
     display:none;
 }

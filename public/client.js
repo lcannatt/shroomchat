@@ -8,13 +8,14 @@
 
 	var roomId=window.location.pathname.split('/').last();
 	var nickname;
-	
+	var hash;
+	var pwd;//Global, set by hashauth(), read by encrypt(),hashauth()
+	var chatInit=false;
 	/*
 	*
 	* SOCKET MANAGEMENT
 	*
 	*/
-
 	var socket = io("localhost:3000");
 	socket.on("connect",function(){
 		console.log("connection opened");
@@ -38,18 +39,29 @@
 	});
 	/*
 	*
-	* Auth management
+	* Crypto Related
 	*
 	*/
+
+	//Room Authorization
 	function hashauth(){
-		let pwd=document.querySelector('#password').value;
-		let hash=sha3_256(pwd+salt);
+		pwd=document.querySelector('#password').value;
+		hash=sha3_256(pwd+salt);
 		console.log('calculated server roomkey using sha3_256 with room salt: "'+hash+'"')
 		socket.emit('auth',JSON.stringify({
 			room:roomId,
 			password:hash
 		}))
 	}
+	//pgp encryption
+	async function encrypt(msg){
+		let options={
+			message:openpgp.message.fromText(msg),
+			passwords:[pwd],
+		}
+		return(openpgp.encrypt(options));
+	}
+
 
 
 	/*
@@ -64,7 +76,43 @@
 		nickname=(nickInput.value!='')?nickInput.value:'Anonymous';
 		login.classList.add('nodisplay');
 		main.classList.remove('nodisplay');
+		if(!chatInit){initChatListeners();}
 
+	}
+	async function sendChat(){
+		let input=document.querySelector('#message');
+		let encrypted='';
+		if(input){
+			let formatted=JSON.stringify({
+				nickname:nickname,
+				timestamp:Date.now(),
+				message:input.value,
+			});
+			encrypted=await encrypt(formatted);
+		}
+		let data={
+			room:roomId,
+			password:hash,
+			message:encrypted
+		}
+		console.log(data);
+		socket.emit('chat',JSON.stringify(data));
+	}
+	function initChatListeners(){
+		document.addEventListener('keyup',function(e){
+			if(e.key==="Enter"&&!e.shiftKey){
+				let send=document.querySelector('#send');
+				if(send){
+					send.click();
+				}
+			}
+		});
+		document.addEventListener('click',function(e){
+			if(e.target.id==="send"){
+				sendChat();
+			}
+		});
+		chatInit=true;
 	}
 
 	/*
@@ -73,6 +121,7 @@
 	*
 	*/
 	var salt;
+
 
 	document.addEventListener("click",function(event){
 		if(event.target.id==="auth"){
@@ -83,4 +132,12 @@
 			socket.emit('chat',JSON.stringify(message));
 		}
 	})
+
+	/*
+	*
+	* Testing
+	*
+	*/
+	document.querySelector('#password').value='test';
+	socket.on("handshake",hashauth);
 })();
