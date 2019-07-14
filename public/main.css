@@ -22,7 +22,7 @@
     bottom:0;
     left:0;
     right:0;
-    max-height: 30%;
+    height: 15%;
     background-color: burlywood;
     overflow:none;
 }
@@ -32,8 +32,65 @@
     width:100%!important;
     box-sizing: border-box;
 }
-.messages{
-	overflow-y:scroll;
+.messages-wrapper{
+    width:100%;
+    height:85%;
+
+    overflow-y:scroll;
+}
+.messages-scroll{
+    display:table;
+    width:100%;
+}
+#messages-content{
+    display: table-cell;
+    vertical-align: bottom;
+    height:100%;
+
+}
+.chat-wrapper{
+    clear:both;
+    width:100%;
+
+}
+.chat{
+    width:40vw;
+    padding:.5em;
+    margin:.25em;
+}
+.self{
+    float: right;
+    background-color: lightskyblue
+}
+.other{
+    float:left;
+    background-color: lightgreen;
+}
+.chat-header{
+    border-bottom:1px solid black;
+    min-height:1em;
+}
+.chat-body{
+    padding:.5em;
+}
+.status-update{
+    text-align: center;
+    color: #333;
+}
+.clear{
+    clear:both;
+}
+.float-l{
+    float:left;
+}
+.float-r{
+    float:right;
+}
+.timestamp{
+    font-style:italic;
+}
+.nickname{
+    font-weight:bold;
 }
 .chat-ui{
     width:100%;

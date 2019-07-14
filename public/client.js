@@ -5,9 +5,14 @@
 		};
 	};
 
-
+	/*
+	*
+	* Init
+	*
+	*/
+	var salt; //set in socket handshake
 	var roomId=window.location.pathname.split('/').last();
-	var nickname;
+	var localNick;
 	var hash;
 	var pwd;//Global, set by hashauth(), read by encrypt(),hashauth()
 	var chatInit=false;
@@ -31,7 +36,7 @@
 	socket.on("message",async function(payload){
 		let pgpObject=JSON.parse(payload);
 		let data = await decrypt(pgpObject);
-		recieveChat(data);
+		displayMsg(data,false);
 	});
 	socket.on("authError",function(){
 		console.log("cant auth")
@@ -39,17 +44,23 @@
 	socket.on("authOK",function(message){
 		openChat();
 	});
+	socket.on('status',function(status){
+		displayStatus(status);
+	});
 	
-	async function sendChat(){
+	async function sendChat(){//
 		let input=document.querySelector('#message');
 		let encrypted='';
-		if(input){
-			let formatted=JSON.stringify({
-				nickname:nickname,
+		let formatted;
+		if(input&&input.value.trim()!=''){
+			formatted={
+				nickname:localNick,
 				timestamp:Date.now(),
 				message:input.value,
-			});
-			encrypted=await encrypt(formatted);
+			};
+			encrypted=await encrypt(JSON.stringify(formatted));
+		}else{
+			return false;
 		}
 		let data={
 			room:roomId,
@@ -58,7 +69,7 @@
 		}
 		console.log(data);
 		socket.emit('chat',JSON.stringify(data));
-		return true;
+		return formatted;
 	}
 	/*
 	*
@@ -69,10 +80,13 @@
 	//Room Authorization
 	function hashauth(){
 		pwd=document.querySelector('#password').value;
+		let nickInput=document.getElementById('nick');
+		localNick=(nickInput.value!='')?nickInput.value:'Anonymous';
 		hash=sha3_256(pwd+salt);
 		console.log('calculated server roomkey using sha3_256 with room salt: "'+hash+'"')
 		socket.emit('auth',JSON.stringify({
 			room:roomId,
+			nickname:localNick,
 			password:hash
 		}))
 	}
@@ -84,6 +98,7 @@
 		}
 		return(openpgp.encrypt(options));
 	}
+	//pgp decryption
 	async function decrypt(pgpObject){
 		let message = await openpgp.message.readArmored(pgpObject.data)
 		let sk= await openpgp.decryptSessionKeys({
@@ -109,10 +124,10 @@
 		let login=document.getElementById('login');
 		let nickInput=document.getElementById('nick')
 		let main=document.getElementById('main');
-		nickname=(nickInput.value!='')?nickInput.value:'Anonymous';
+		localNick=(nickInput.value!='')?nickInput.value:'Anonymous';
 		login.classList.add('nodisplay');
 		main.classList.remove('nodisplay');
-		if(!chatInit){initChatListeners();}
+		initChatListeners();
 
 	}
 	function clearInput(){
@@ -122,33 +137,77 @@
 		}
 	}
 	
-	function recieveChat({nickname,timestamp,message}){
-		console.log(message);
+	function displayMsg(data,self){
+		let {nickname,timestamp,message}=data;
+		let wrapper=TPR_GEN.newElement('div',{className:'chat-wrapper'})
+		let chat=TPR_GEN.newElement('div',{className:`chat ${(self)?'self':'other'}`});
+		let header=TPR_GEN.newElement('div',{className:'chat-header clear'});
+		let nickSpan=TPR_GEN.newElement('div',{
+			className:'float-l nickname',
+			innerText:nickname
+		});
+		header.appendChild(nickSpan);
+		let dateObj=new Date(timestamp);
+		let timeSpan=TPR_GEN.newElement('div',{
+			className:'float-r timestamp',
+			innerText:dateObj.toLocaleString()
+		});
+		header.appendChild(timeSpan);
+		chat.appendChild(header);
+		let body=TPR_GEN.newElement('div',{
+			className:'chat-body clear',
+			innerText:message
+		})
+		chat.appendChild(body);
+		wrapper.appendChild(chat);
+		let content=document.querySelector('#messages-content');
+		if(content){
+			content.appendChild(wrapper);
+		}
+		wrapper.scrollIntoView();
+	}
+	function displayStatus(status){
+		let wrapper=TPR_GEN.newElement('div',{className:'chat-wrapper'})
+		let statusDiv=TPR_GEN.newElement('div',{className:'status-update',innerText:status});
+		wrapper.appendChild(statusDiv);
+		let content=document.querySelector('#messages-content');
+		if(content){
+			content.appendChild(wrapper);
+		}
+		wrapper.scrollIntoView();
+		
 	}
 	function initChatListeners(){
-		document.addEventListener('keyup',function(e){
-			if(e.key==="Enter"&&!e.shiftKey){
-				let send=document.querySelector('#send');
-				if(send){
-					send.click();
+		if(!chatInit){
+			document.addEventListener('keyup',function(e){
+				if(e.key==="Enter"&&!e.shiftKey){
+					let send=document.querySelector('#send');
+					if(send){
+						send.click();
+					}
 				}
-			}
-		});
-		document.addEventListener('click',async function(e){
-			if(e.target.id==="send"){
-				let sent=await sendChat()
-				if(sent){clearInput();}
-			}
-		});
+			});
+			document.addEventListener('keydown',function(e){
+				if(e.key==="Enter"&&!e.shiftKey){
+					e.preventDefault;
+				}
+			})
+			document.addEventListener('click',async function(e){
+				if(e.target.id==="send"){
+					e.target.disabled=true;
+					let data=await sendChat()
+					if(data){
+						displayMsg(data,true);
+					}
+					clearInput();
+					e.target.disabled=false;
+				}
+			});
+		}
 		chatInit=true;
 	}
 
-	/*
-	*
-	* Init
-	*
-	*/
-	var salt;
+	
 
 
 	document.addEventListener("click",function(event){
@@ -166,6 +225,6 @@
 	* Testing
 	*
 	*/
-	document.querySelector('#password').value='test';
-	socket.on("handshake",hashauth);
+	// document.querySelector('#password').value='test';
+	// socket.on("handshake",hashauth);
 })();

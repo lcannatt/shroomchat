@@ -14,7 +14,7 @@
 			<label for="password">Room Key</label>
 			<input type="password" id="password" name="password">
 			<label for="nick">Nickname</label>
-			<input type="text" id="nick" name="nick">
+			<input type="text" id="nick" name="nick" value="Anonymous">
 			<br>
 			<input type="submit" id="auth" value="Log In">
 			<input type="button" id="msg" value="msg">
@@ -24,8 +24,12 @@
 	<div class="nodisplay" id="main">
 		<div class="center">
 			<div class="chat-container">
-				<div class="messages">
-	
+				<div class="messages-wrapper">
+					<div class="messages-scroll">
+						<div id="messages-content">
+
+						</div>
+					</div>
 				</div>
 				<div class="chat-inputs">
 					<form id="chat" action="javascript:void()">
@@ -44,6 +48,7 @@
 		<script src="/scripts/socket.io.js"></script>
 		<script src="/scripts/openpgp.min.js"></script>
 		<script src="/scripts/sha3.min.js"></script>
+		<script src="/scripts/tpr.js"></script>
 		<script src="/client.js"></script>
 	</footer>
 </body>
