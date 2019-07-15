@@ -31,6 +31,7 @@ var rooms={//initialized with room for testing.
 	testroom:{
 		salt:'e27b79c799253a0aa42579fb5c804586',
 		passHash:'$2b$10$zDRkdwmlTCeR.wNc8nw.WOPzsUE2C7XQm9PHD/2RCG.NkYgQa.WUS',
+		sockets:[],
 		active:1
 	}
 }
@@ -65,9 +66,10 @@ function generateSalt(){
 function disconnectCleanup(socket){
 	if(sockets.hasOwnProperty(socket.id)){
 		sockets[socket.id].rooms.forEach(function(name){
-			socket.to(name).emit('status',`${sockets[socket.id].name} has left the room`)
+			socket.to(name).emit('status',`${sockets[socket.id].name} left the room`)
 			if(rooms.hasOwnProperty(name)){
 				rooms[name].active-=1; //Update room member counters
+				rooms[name].sockets=rooms[name].sockets.filter(id => id!=socket.id);
 				if(rooms[name].active==0){
 					delete rooms[name]; //Delete room if empty
 				}
@@ -104,10 +106,15 @@ io.on("connection",function(socket){
 			}else{
 				sockets[socket.id].rooms.push(authObject.room);
 			}
+			let nicknames=[]
+			rooms[authObject.room].sockets.forEach(id => nicknames.push(sockets[id]['name']));
+
 			rooms[authObject.room].active+=1;
+			rooms[authObject.room].sockets.push(socket.id);
 			console.log(sockets);
-			socket.emit('authOK',`Joining room ${authObject.room}`);
-			socket.to(authObject.room).emit('status',`${authObject.nickname} has joined the room.`)
+			
+			socket.emit('authOK',`Joined room ${nicknames.length>0?`with ${nicknames.toString()}`:''}`);
+			socket.to(authObject.room).emit('status',`${authObject.nickname} joined the room.`)
 		}else{
 			socket.emit('authError')
 		}
@@ -121,7 +128,10 @@ io.on("connection",function(socket){
 			console.log(`sending message to ${messageObject.room}`);
 			socket.to(messageObject.room).emit('message',content);
 		}
-	})
+	});
+	socket.on('logout', function(){
+		disconnectCleanup(socket);
+	});
 	socket.on('disconnect', function(){
 		disconnectCleanup(socket);
 		console.log(`socket disconnecting - ${socket.id}`);

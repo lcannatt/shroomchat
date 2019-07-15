@@ -14,7 +14,7 @@
 	var roomId=window.location.pathname.split('/').last();
 	var localNick;
 	var hash;
-	var pwd;//Global, set by hashauth(), read by encrypt(),hashauth()
+	var pwd;//Global, set by hashauth(), logout(), read by encrypt(),hashauth()
 	var chatInit=false;
 	/*
 	*
@@ -27,11 +27,14 @@
 		socket.emit('handshake',JSON.stringify({id:roomId}));
 	});
 	socket.on("disconnect",function(){
-		console.log('disconnected');
+		displayStatus('Server disconnected.');
 	});
 	socket.on('handshake',function(serverSalt){
 		salt=serverSalt;
 		console.log('room hash salt recieved from server: '+salt);
+		if(chatInit){
+			hashauth();
+		}
 	})
 	socket.on("message",async function(payload){
 		let pgpObject=JSON.parse(payload);
@@ -42,7 +45,8 @@
 		console.log("cant auth")
 	});
 	socket.on("authOK",function(message){
-		openChat();
+		openChat(message);
+		
 	});
 	socket.on('status',function(status){
 		displayStatus(status);
@@ -120,14 +124,23 @@
 	* chat client
 	*
 	*/
-	function openChat(){
+	function openChat(message){
+		
 		let login=document.getElementById('login');
 		let nickInput=document.getElementById('nick')
 		let main=document.getElementById('main');
 		localNick=(nickInput.value!='')?nickInput.value:'Anonymous';
 		login.classList.add('nodisplay');
 		main.classList.remove('nodisplay');
+		if(!chatInit){
 		initChatListeners();
+		chatInit=true;
+		}else{
+			displayStatus('Server reconnected.');
+		}
+		displayStatus(message);
+		document.querySelector('#messages').focus();
+		
 
 	}
 	function clearInput(){
@@ -177,48 +190,62 @@
 		wrapper.scrollIntoView();
 		
 	}
-	function initChatListeners(){
-		if(!chatInit){
-			document.addEventListener('keyup',function(e){
-				if(e.key==="Enter"&&!e.shiftKey){
-					let send=document.querySelector('#send');
-					if(send){
-						send.click();
-					}
+	function logout(){
+		let loginForm=document.querySelector('#room-login');
+		socket.emit('logout');
+		loginForm.reset();
+		loginForm.closest('#login').classList.remove('nodisplay');
+		document.querySelector('#main').classList.add('nodisplay');
+		
+
+	}
+	function initChatListeners(){	
+		document.addEventListener('keyup',function(e){
+			if(e.key==="Enter"&&!e.shiftKey){
+				e.preventDefault();
+				let send=document.querySelector('#send');
+				if(send){
+					send.click();
 				}
-			});
-			document.addEventListener('keydown',function(e){
-				if(e.key==="Enter"&&!e.shiftKey){
-					e.preventDefault;
+			}
+		});
+		document.addEventListener('keydown',function(e){
+			if(e.key==="Enter"&&!e.shiftKey){
+				e.preventDefault;
+			}
+		})
+		document.addEventListener('click',async function(e){
+			if(e.target.id==="send"){
+				e.target.disabled=true;
+				let textinput=document.querySelector('#message')
+				textinput.disabled=true;
+				let data=await sendChat()
+				if(data){
+					displayMsg(data,true);
 				}
-			})
-			document.addEventListener('click',async function(e){
-				if(e.target.id==="send"){
-					e.target.disabled=true;
-					let data=await sendChat()
-					if(data){
-						displayMsg(data,true);
-					}
-					clearInput();
-					e.target.disabled=false;
-				}
-			});
-		}
-		chatInit=true;
+				clearInput();
+				textinput.disabled=false;
+				textinput.focus();
+				e.target.disabled=false;
+			}
+			else if(event.target.id=='logout'){
+				logout();
+			}
+		});
 	}
 
-	
-
-
+	/*
+	*
+	* INIT
+	*
+	*/
+	document.querySelector('#roomid').innerText=roomId;
 	document.addEventListener("click",function(event){
 		if(event.target.id==="auth"){
 			console.log(event);
 			hashauth();
 		}
-		if(event.target.id==="msg"){
-			socket.emit('chat',JSON.stringify(message));
-		}
-	})
+	});
 
 	/*
 	*

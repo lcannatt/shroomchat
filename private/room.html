@@ -3,28 +3,47 @@
 <head>
 	<meta charset="utf-8" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>room</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" type="text/css" media="screen" href="/main.css" />
 </head>
 <body>
 	<div id="login">
-		<h1>Login</h1>
-		<form id='room-login' action="javascript:void()">
-			<label for="password">Room Key</label>
-			<input type="password" id="password" name="password">
-			<label for="nick">Nickname</label>
-			<input type="text" id="nick" name="nick" value="Anonymous">
-			<br>
-			<input type="submit" id="auth" value="Log In">
-			<input type="button" id="msg" value="msg">
-		</form>
-		
+		<div class="center">
+			<div class="logo">
+				<img src="/shroom.png">
+			</div>
+			<form id='room-login' action="javascript:void(0);">
+				<div class="input-wrapper">
+						<label>Room ID</label><br>
+						<div id="roomid"></div>
+				</div>
+				<div class="input-wrapper">
+					<label for="nick">Nickname</label><br>
+					<input type="text" id="nick" name="nick" value="Anonymous">
+				</div>
+				<div class="input-wrapper">
+					<label for="password">Room Key</label><br>
+					<input type="password" id="password" name="password">
+				</div>
+				<div class="input-wrapper">
+					<input type="submit" id="auth" value="Enter">
+				</div>
+				
+			</form>
+		</div>
 	</div>
 	<div class="nodisplay" id="main">
 		<div class="center">
 			<div class="chat-container">
 				<div class="messages-wrapper">
+					<div class="nav-m">
+						<div class="option float-l" id="logout">🡰</div>
+						<div class="logo" id="logo">
+							<img src="/shroom.png"/>
+						</div>
+					</div>
 					<div class="messages-scroll">
 						<div id="messages-content">
 
@@ -32,7 +51,7 @@
 					</div>
 				</div>
 				<div class="chat-inputs">
-					<form id="chat" action="javascript:void()">
+					<form id="chat" action="javascript:void(0)">
 						<table class="chat-ui">
 							<tr>
 								<td colspan="5"><textarea name="message" id="message"></textarea></td>

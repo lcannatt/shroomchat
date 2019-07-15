@@ -1,4 +1,39 @@
-.main{
+/*   GENERAL    */
+body{
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	background-color: #fff9f5;
+	margin:0;
+}
+
+
+/*   LOGIN INFO    */
+#login{
+	text-align: center;
+	position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+}
+.input-wrapper{
+	text-align:center;
+	margin:1em 0;
+}
+#login .logo{
+	width: 100%;
+	padding: 5em 0 2em 0;
+}
+#login .logo img{
+	display:block;
+	margin:auto;
+	max-width: 10em;
+}
+label{
+	font-weight: bold;
+}
+
+/*   CHAT DESIGN   */
+#main{
     position:fixed;
     top:0;
     left:0;
@@ -6,16 +41,63 @@
     height:100vh;
 }
 .center{
-    width:50vw;
-    height:50vh;
-    margin:auto;
+	width:100vw;
+	height:100vh;
+}
+@media only screen and (min-width:1025px){
+	.center{
+		width:50vw;
+		margin:auto;
+		box-shadow: 0 0 4px 0px #333;
+	}
+}
+@media only screen and (min-width:600px) and (max-width:1024px){
+	body{
+		font-size: 1.5em;
+	}
+}
+@media only screen and (max-width:1024px){
+	
+}
+.nav-m{
+	background-color:#e76583;
+	height:3em;
+	position:sticky;
+	top:0;
+	display:table;
+	width:100%;
+	border-bottom-left-radius: .5em;
+	border-bottom-right-radius: .5em;
+	overflow: hidden;
+	text-align: center;
+}
+.nav-m .option{
+	box-sizing: border-box;
+	display:inline-block;
+	vertical-align: middle;
+	padding:.75em 1em;
+	height:3em;
+	cursor: pointer;
+}
+.nav-m .option:hover{
+	background-color:#d3214b;
+	color:white;
+}
+#logo{
+	width:3em;
+	height:3em;
+	margin:auto;
+}
+#logo img{
+	max-width:2.7em;
+	padding:5px 0;
 }
 .chat-container{
     top:0;
     left:0;
     height:inherit;
     position:relative;
-	background-color: beige;
+	background-color: #fff1e5;
 }
 .chat-inputs{
     position: absolute;
@@ -23,22 +105,39 @@
     left:0;
     right:0;
     height: 15%;
-    background-color: burlywood;
+    background-color: #e76583;
     overflow:none;
 }
 #message{
     resize:none;
     height:100%!important;
     width:100%!important;
-    box-sizing: border-box;
+	box-sizing: border-box;
+	display:block;
+	padding: .3em .4em;
+	font:inherit;
+	border-radius:.5em;
+	border:none;
+	background-color: rgba(255, 255, 255, 0.979);
+}
+#send{
+	font:inherit;
+	width:100%;
+	height:100%;
+	display:block;
+	background-color: #fffd;
+	border-radius:.5em;
+	border:none;
 }
 .messages-wrapper{
     width:100%;
     height:85%;
-
-    overflow-y:scroll;
+	box-sizing: border-box;
+    overflow-y:auto;
 }
 .messages-scroll{
+	box-sizing: border-box;
+	padding:.5em;
     display:table;
     width:100%;
 }
@@ -54,30 +153,42 @@
 
 }
 .chat{
-    width:40vw;
+    width:80%;
     padding:.5em;
-    margin:.25em;
+	margin:.25em;
+	word-break: break-word;
+}
+#chat{
+	height:100%;
 }
 .self{
+	border-top-left-radius: .5em;
+	border-top-right-radius: .5em;
+	border-bottom-left-radius: .5em;
     float: right;
     background-color: lightskyblue
 }
 .other{
+	border-top-left-radius: .5em;
+	border-top-right-radius: .5em;
+	border-bottom-right-radius: .5em;
     float:left;
     background-color: lightgreen;
 }
 .chat-header{
     border-bottom:1px solid black;
-    min-height:1em;
+    min-height:1.5em;
 }
 .chat-body{
     padding:.5em;
 }
 .status-update{
-    text-align: center;
-    color: #333;
+	text-align: center;
+	font-style:italic;
+	color: #333;
+	padding:.2em 0;
 }
-.clear{
+.clear::after{
     clear:both;
 }
 .float-l{
@@ -99,6 +210,10 @@
 }
 .chat-ui{
     text-align: center;
+}
+.chat-ui td{
+	padding:3px;
+	height:100%;
 }
 .nodisplay{
     display:none;
