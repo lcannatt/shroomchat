@@ -21,7 +21,7 @@
 	* SOCKET MANAGEMENT
 	*
 	*/
-	var socket = io("localhost:3000");
+	var socket = io(window.location.origin);
 	socket.on("connect",function(){
 		console.log("connection opened");
 		socket.emit('handshake',JSON.stringify({id:roomId}));
@@ -240,12 +240,13 @@
 	*
 	*/
 	document.querySelector('#roomid').innerText=roomId;
-	document.addEventListener("click",function(event){
-		if(event.target.id==="auth"){
-			console.log(event);
+	document.addEventListener("submit",function(event){
+		event.preventDefault();
+		if(event.target.id==="room-login"){
 			hashauth();
 		}
 	});
+
 
 	/*
 	*
