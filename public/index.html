@@ -9,12 +9,33 @@
 	<link rel="stylesheet" type="text/css" media="screen" href="main.css" />
 </head>
 <body>
-	<h1>Welcome to Shroomchat</h1>
-	<p>Currently in testing mode, please visit the test room:</p>
-	<p><a href="/room/testroom">test room</a></p>
-	<p>Roomkey: "test"</p>
-	<script src="socket.io.js"></script>
-	<script src="openpgp.min.js"></script>
-	<script src="client.js"></script>
+	<div id="login">
+		<div class="center">
+			<div class="logo">
+				<img src="/shroom.png">
+			</div>
+			<h2>ShroomChat</h2>
+			<div class="input-wrapper">
+				<div class="expander">
+					<div class="button" id="new-room">Start a Chat</div>
+				</div>	
+			</div>
+			<div class="input-wrapper">
+				<div class="expander closed" id="room-setup">
+					<form action="javascript:void(0)" id='roomdata'>
+						<p><label for="password">Room Key</label></p>
+						<input type="password" id="password">
+						<p><div class="button small disabled" id="create">Go</div></p>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+	<footer>
+		<script src="/scripts/socket.io.js"></script>
+		<script src="/scripts/sha3.min.js"></script>
+		<script src="client.js"></script>
+		<script src="home.js"></script>
+	</footer>
 </body>
 </html>

@@ -5,6 +5,8 @@ var server = http.createServer(app).listen(3000);
 var io=require("socket.io")(server);
 var bcrypt=require("bcrypt");
 var crypto=require("crypto");
+var flake=require('flake-idgen');
+var flakeIdGen = new flake();
 // var fs=require('fs');
 var path=require('path');
 
@@ -25,16 +27,31 @@ app.get('/scripts/sha3.min.js',function(req,res){
 });
 
 
-
+var hour=60*60*1000;//ms for unused cleanup
 //Socket handling
 var rooms={//initialized with room for testing.
 	testroom:{
 		salt:'e27b79c799253a0aa42579fb5c804586',
 		passHash:'$2b$10$zDRkdwmlTCeR.wNc8nw.WOPzsUE2C7XQm9PHD/2RCG.NkYgQa.WUS',
 		sockets:[],
-		active:1
+		active:1,
+		created:new Date(),
+		msgCount:0
 	}
 }
+function prune(){
+	console.log('Pruning unused rooms');
+	let now=new Date();
+	for(room in rooms){
+		if(rooms[room].active===0 && now-rooms[room].created>hour){
+			console.log(`Deleting ${room}`);
+			delete rooms[room];
+		}
+	}
+	setTimeout(prune,hour/12)
+}
+setTimeout(prune,0);
+
 /*
 Socket tracking array:
 property=socket.id {
@@ -82,16 +99,32 @@ function disconnectCleanup(socket){
 }
 io.on("connection",function(socket){
 	socket.on("handshake",function(msg){
-		obj=JSON.parse(msg);
+		let obj=JSON.parse(msg);
 		if(rooms.hasOwnProperty(obj.id)){
 			socket.emit("handshake",rooms[obj.id].salt)
 		}else{
 			socket.emit("handshake",generateSalt())
 		}
 	})
+	socket.on('new',async function(message){
+		let obj=JSON.parse(message);
+		let hash=obj.passHash;
+		let crypt=await bcrypt.hash(hash,10);
+		let id=flakeIdGen.next().toString('base64').replace('/','@');
+		rooms[id]={
+			salt:obj.salt,
+			passHash:crypt,
+			sockets:[],
+			date:new Date(),
+			active:0,
+			msgCount:0
+		}
+		socket.emit('new',id);
+
+	})
 	socket.on("auth",async function(message){
 		console.log(`Socket Authorizing - ${socket.id}`)
-		authObject=JSON.parse(message)
+		let authObject=JSON.parse(message)
 		//Validate room key for user
 		let success=await authorize(authObject);
 		if(success){
@@ -123,10 +156,16 @@ io.on("connection",function(socket){
 		console.log(`chat: ${message}`);
 		let messageObject=JSON.parse(message);
 		let authorized=await authorize(messageObject);
-		let content=JSON.stringify(messageObject.message);
+		
 		if(authorized){
+			rooms[messageObject.room].msgCount+=1;
+			let id=rooms[messageObject.room].msgCount;
+			let content=messageObject.message;
+			content.id=id;
+			content=JSON.stringify(content);
 			console.log(`sending message to ${messageObject.room}`);
 			socket.to(messageObject.room).emit('message',content);
+			socket.emit('conf',id)
 		}
 	});
 	socket.on('logout', function(){
@@ -139,5 +178,7 @@ io.on("connection",function(socket){
 		console.log(sockets);
 	})
 });
+
+
 
 console.log("starting socket app on port 3000")

@@ -11,46 +11,50 @@
 	*
 	*/
 	var salt; //set in socket handshake
-	var roomId=window.location.pathname.split('/').last();
+	var roomId;// must be set before initiating handshake 
 	var localNick;
 	var hash;
 	var pwd;//Global, set by hashauth(), logout(), read by encrypt(),hashauth()
 	var chatInit=false;
+	var socket;
 	/*
 	*
 	* SOCKET MANAGEMENT
 	*
 	*/
-	var socket = io(window.location.origin);
-	socket.on("connect",function(){
-		console.log("connection opened");
-		socket.emit('handshake',JSON.stringify({id:roomId}));
-	});
-	socket.on("disconnect",function(){
-		displayStatus('Server disconnected.');
-	});
-	socket.on('handshake',function(serverSalt){
-		salt=serverSalt;
-		console.log('room hash salt recieved from server: '+salt);
-		if(chatInit){
-			hashauth();
-		}
-	})
-	socket.on("message",async function(payload){
-		let pgpObject=JSON.parse(payload);
-		let data = await decrypt(pgpObject);
-		displayMsg(data,false);
-	});
-	socket.on("authError",function(){
-		console.log("cant auth")
-	});
-	socket.on("authOK",function(message){
-		openChat(message);
-		
-	});
-	socket.on('status',function(status){
-		displayStatus(status);
-	});
+	function initSocket(){// create socket instance, set up listeners\
+		socket = io(window.location.origin);
+		socket.on("connect",function(){
+			console.log("connection opened");
+			socket.emit('handshake',JSON.stringify({id:roomId}));
+		});
+		socket.on("disconnect",function(){
+			displayStatus('Server disconnected.');
+		});
+		socket.on('handshake',function(serverSalt){
+			salt=serverSalt;
+			console.log('room hash salt recieved from server: '+salt);
+			if(chatInit){
+				hashauth();
+			}
+		})
+		socket.on("message",async function(payload){
+			let pgpObject=JSON.parse(payload);
+			let data = await decrypt(pgpObject);
+			displayMsg(data,false);
+		});
+		socket.on("authError",function(){
+			console.log("cant auth")
+		});
+		socket.on("authOK",function(message){
+			openChat(message);
+			
+		});
+		socket.on('status',function(status){
+			displayStatus(status);
+		});
+	}
+	
 	
 	async function sendChat(){//
 		let input=document.querySelector('#message');
@@ -139,7 +143,7 @@
 			displayStatus('Server reconnected.');
 		}
 		displayStatus(message);
-		document.querySelector('#messages').focus();
+		document.querySelector('#message').focus();
 		
 
 	}
@@ -239,20 +243,16 @@
 	* INIT
 	*
 	*/
-	document.querySelector('#roomid').innerText=roomId;
-	document.addEventListener("submit",function(event){
-		event.preventDefault();
-		if(event.target.id==="room-login"){
-			hashauth();
-		}
-	});
+	if(window.location.pathname.includes('room')){
+		roomId=window.location.pathname.split('/').last();
+		initSocket();
+		document.querySelector('#roomid').innerText=roomId;
+		document.addEventListener("submit",function(event){
+			event.preventDefault();
+			if(event.target.id==="room-login"){
+				hashauth();
+			}
+		});
+	}
 
-
-	/*
-	*
-	* Testing
-	*
-	*/
-	// document.querySelector('#password').value='test';
-	// socket.on("handshake",hashauth);
 })();

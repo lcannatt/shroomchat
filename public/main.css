@@ -1,11 +1,47 @@
 /*   GENERAL    */
 body{
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-	background-color: #fff9f5;
 	margin:0;
+	background-color: #921733;
 }
+/*   HOME PAGE   */
+.button{
+	margin:auto;
+	padding:.75em;
+	box-sizing: border-box;
+	background-color: #e76583;
+	border-radius:.5em;
+	height: 3em;
+	width:15em;
+	cursor: pointer;
+	-moz-user-select: none; /* Firefox */
+	-ms-user-select: none; /* Internet Explorer */
+	-khtml-user-select: none; /* KHTML browsers (e.g. Konqueror) */
+	-webkit-user-select: none; /* Chrome, Safari, and Opera */
+	-webkit-touch-callout: none; /* Disable Android and iOS callouts*/
+}
+.button:hover:not(.disabled){
+	box-shadow: 0 2px 2px 0 #333;
+}
+.button:active:not(.disabled){
+	background-color:#921733;
+	color:white;
+}
+.button.small{
+	width:5em;
+}
+.button.disabled{
+	background-color:#ffe4cc;
+	color:white;
 
-
+}
+.expander{
+	transition: height .5s;
+	overflow:hidden;
+}
+.expander.closed{
+	height:0;
+}
 /*   LOGIN INFO    */
 #login{
 	text-align: center;
@@ -43,6 +79,7 @@ label{
 .center{
 	width:100vw;
 	height:100vh;
+	background-color: #fff9f5;
 }
 @media only screen and (min-width:1025px){
 	.center{
