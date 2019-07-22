@@ -17,6 +17,8 @@
 	var pwd;//Global, set by hashauth(), logout(), read by encrypt(),hashauth()
 	var chatInit=false;
 	var socket;
+	var history={};
+	var queue=[];
 	/*
 	*
 	* SOCKET MANAGEMENT
@@ -41,6 +43,9 @@
 		socket.on("message",async function(payload){
 			let pgpObject=JSON.parse(payload);
 			let data = await decrypt(pgpObject);
+			let id=pgpObject.id;
+			history[id]=data;
+			console.log('History: ',history);
 			displayMsg(data,false);
 		});
 		socket.on("authError",function(){
@@ -52,6 +57,26 @@
 		});
 		socket.on('status',function(status){
 			displayStatus(status);
+		});
+		socket.on('history-request',async function(payload){
+			let obj=JSON.parse(payload);
+			obj.hist=await(encrypt(JSON.stringify(history)));
+			obj.room=roomId;
+			obj.password=hash;
+			console.log('Sending history:',obj);
+			socket.emit('history-response',JSON.stringify(obj));
+		});
+		socket.on('history-response', async function(payload){
+			let obj= JSON.parse(payload);
+			let data=await decrypt(obj);
+			for(id in data){
+				history[id]=data[id];
+			}
+			console.log('Recieved history:',history);
+		});
+		socket.on('conf',function(id){
+			history[id]=queue.shift();
+			console.log('Recieved Message Confirmation. ', history);
 		});
 	}
 	
@@ -75,7 +100,8 @@
 			password:hash,
 			message:encrypted
 		}
-		console.log(data);
+		console.log('Sending Message:',data);
+		queue.push(formatted);
 		socket.emit('chat',JSON.stringify(data));
 		return formatted;
 	}
@@ -129,7 +155,6 @@
 	*
 	*/
 	function openChat(message){
-		
 		let login=document.getElementById('login');
 		let nickInput=document.getElementById('nick')
 		let main=document.getElementById('main');
@@ -139,13 +164,9 @@
 		if(!chatInit){
 		initChatListeners();
 		chatInit=true;
-		}else{
-			displayStatus('Server reconnected.');
 		}
 		displayStatus(message);
 		document.querySelector('#message').focus();
-		
-
 	}
 	function clearInput(){
 		let input=document.querySelector('#message');

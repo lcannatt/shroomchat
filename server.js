@@ -5,8 +5,7 @@ var server = http.createServer(app).listen(3000);
 var io=require("socket.io")(server);
 var bcrypt=require("bcrypt");
 var crypto=require("crypto");
-var flake=require('flake-idgen');
-var flakeIdGen = new flake();
+var openpgp=require("openpgp");
 // var fs=require('fs');
 var path=require('path');
 
@@ -33,12 +32,14 @@ var rooms={//initialized with room for testing.
 	testroom:{
 		salt:'e27b79c799253a0aa42579fb5c804586',
 		passHash:'$2b$10$zDRkdwmlTCeR.wNc8nw.WOPzsUE2C7XQm9PHD/2RCG.NkYgQa.WUS',
+		internalKey:crypto.randomBytes(32).toString('base64'),
 		sockets:[],
 		active:1,
 		created:new Date(),
 		msgCount:0
 	}
 }
+console.log(rooms);
 function prune(){
 	console.log('Pruning unused rooms');
 	let now=new Date();
@@ -80,6 +81,36 @@ async function authorize(authObject){
 function generateSalt(){
 	return crypto.randomBytes(32).toString('hex').slice(0,32);
 }
+async function newId(){
+	let random = crypto.randomBytes(8).toString('base64').replace('/','@');
+	if(rooms.hasOwnProperty([random])){
+		random = await newId();
+	}
+	return random;
+}
+//pgp encrypt string wrapper
+async function encrypt(msg,pwd){
+	let options={
+		message:openpgp.message.fromText(msg),
+		passwords:[pwd]
+	}
+	return(openpgp.encrypt(options));
+}
+//pgp decrypt string wrapper
+async function decrypt(pgpString,pwd){
+
+	let message = await openpgp.message.readArmored(pgpString);
+	let sk= await openpgp.decryptSessionKeys({
+		message:message,
+		passwords:pwd
+	});
+	let dc= await openpgp.decrypt({
+		sessionKeys:sk[0],
+		message:message
+	})
+	return dc.data;
+
+}
 function disconnectCleanup(socket){
 	if(sockets.hasOwnProperty(socket.id)){
 		sockets[socket.id].rooms.forEach(function(name){
@@ -97,6 +128,14 @@ function disconnectCleanup(socket){
 	}
 	return true;
 }
+async function synchronizeHistory(socket,authObject){
+	let id=socket.id;
+	let room=rooms[authObject.room];
+	if(room.sockets.length>1&&room.sockets[0]!=socket){
+		let data=await encrypt(id,room.internalKey);
+		socket.to(`${room.sockets[0]}`).emit('history-request',JSON.stringify(data));
+	}
+}
 io.on("connection",function(socket){
 	socket.on("handshake",function(msg){
 		let obj=JSON.parse(msg);
@@ -110,10 +149,11 @@ io.on("connection",function(socket){
 		let obj=JSON.parse(message);
 		let hash=obj.passHash;
 		let crypt=await bcrypt.hash(hash,10);
-		let id=flakeIdGen.next().toString('base64').replace('/','@');
+		let id=await newId();
 		rooms[id]={
 			salt:obj.salt,
 			passHash:crypt,
+			internalKey:crypto.randomBytes(32).toString('base64'),
 			sockets:[],
 			date:new Date(),
 			active:0,
@@ -145,12 +185,25 @@ io.on("connection",function(socket){
 			rooms[authObject.room].active+=1;
 			rooms[authObject.room].sockets.push(socket.id);
 			console.log(sockets);
-			
-			socket.emit('authOK',`Joined room ${nicknames.length>0?`with ${nicknames.toString()}`:''}`);
+			synchronizeHistory(socket,authObject);
+			socket.emit('authOK',`Joined room ${nicknames.length>0?`with ${nicknames.toString().replace(',',', ')}`:''}`);
 			socket.to(authObject.room).emit('status',`${authObject.nickname} joined the room.`)
 		}else{
 			socket.emit('authError')
 		}
+	});
+	socket.on("history-response",async function(payload){
+		let obj=JSON.parse(payload);
+		//authorize the socket for the room
+		let authorized=await authorize(obj);
+		//decrypt the requesting socket id
+		if(authorized){
+			let room=rooms[obj.room];
+			let socketID=await decrypt(obj.data,room.internalKey);
+			//send the pgp data to the requesting socket
+			socket.to(socketID).emit('history-response',JSON.stringify(obj.hist));
+		}
+
 	});
 	socket.on("chat",async function(message){
 		console.log(`chat: ${message}`);
@@ -163,7 +216,6 @@ io.on("connection",function(socket){
 			let content=messageObject.message;
 			content.id=id;
 			content=JSON.stringify(content);
-			console.log(`sending message to ${messageObject.room}`);
 			socket.to(messageObject.room).emit('message',content);
 			socket.emit('conf',id)
 		}
@@ -176,7 +228,7 @@ io.on("connection",function(socket){
 		console.log(`socket disconnecting - ${socket.id}`);
 		console.log(rooms);
 		console.log(sockets);
-	})
+	});
 });
 
 
