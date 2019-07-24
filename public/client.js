@@ -1,9 +1,21 @@
+'use strict';
 (function(){
 	if (!Array.prototype.last){
-		Array.prototype.last = function(){
-			return this[this.length - 1];
-		};
-	};
+		Object.defineProperty(Array.prototype, 'last',{
+			value:function(){
+				return this[this.length - 1];
+			},
+			enumerable:false
+		});
+	}
+	if(!Array.prototype.sparseIndexOf){
+		Object.defineProperty(Array.prototype,'sparseIndexOf',{
+			value:function sparseIndexOf(value) {
+				return Object.keys(this).find(k => this[k] === value);
+			},
+			enumerable:false
+		});
+	}
 
 	/*
 	*
@@ -17,8 +29,39 @@
 	var pwd;//Global, set by hashauth(), logout(), read by encrypt(),hashauth()
 	var chatInit=false;
 	var socket;
-	var history={};
-	var queue=[];
+	var history=Array();
+	//subscripted by timestamp
+	//History Object format=[
+	//	[timestamp]:{
+	//		isMessage:bool
+	//		isSelf:bool
+	//		entry:{message object}
+	//		}...
+	//	]
+	var queue=[];//Added to by sendChat(), deleted from by socketchecked by initSocket.checkDropped()
+	//Queue object tracks unconfirmed messages
+	//format = {
+	//	[timestamp]:{message object}
+	//	}
+	function addToHistory(entry,isMsg,options={}){
+		let {isSelf,override,timestamp} = options;
+		isSelf=isSelf?isSelf:true;
+		override=override?override:false;
+		timestamp=timestamp?timestamp:Date.now();
+		//Wrapper for adding entry to history
+		let id=entry.hasOwnProperty('timestamp')?entry.timestamp:timestamp;
+		if(!override){
+			while(history.hasOwnProperty(id)){
+				id++;
+			}
+		}
+		history[id]={
+			isMessage:isMsg,
+			isSelf:isSelf,
+			entry:entry
+		};
+		console.log(history);
+	}
 	/*
 	*
 	* SOCKET MANAGEMENT
@@ -31,7 +74,8 @@
 			socket.emit('handshake',JSON.stringify({id:roomId}));
 		});
 		socket.on("disconnect",function(){
-			displayStatus('Server disconnected.');
+			addToHistory('Server disconnected',false);
+			displayStatus('Server disconnected');
 		});
 		socket.on('handshake',function(serverSalt){
 			salt=serverSalt;
@@ -43,8 +87,7 @@
 		socket.on("message",async function(payload){
 			let pgpObject=JSON.parse(payload);
 			let data = await decrypt(pgpObject);
-			let id=pgpObject.id;
-			history[id]=data;
+			addToHistory(data,true,{isSelf:false});
 			console.log('History: ',history);
 			displayMsg(data,false);
 		});
@@ -52,15 +95,27 @@
 			console.log("cant auth")
 		});
 		socket.on("authOK",function(message){
+			addToHistory(message,false);
 			openChat(message);
 			
 		});
 		socket.on('status',function(status){
+			addToHistory(status,false);
 			displayStatus(status);
 		});
 		socket.on('history-request',async function(payload){
 			let obj=JSON.parse(payload);
-			obj.hist=await(encrypt(JSON.stringify(history)));
+			obj.hist=await(
+				encrypt(
+					JSON.stringify(
+						history.filter(
+							element => element['isMessage']
+							).map(
+								element => element.entry
+							)
+						)
+					)
+				);
 			obj.room=roomId;
 			obj.password=hash;
 			console.log('Sending history:',obj);
@@ -69,15 +124,35 @@
 		socket.on('history-response', async function(payload){
 			let obj= JSON.parse(payload);
 			let data=await decrypt(obj);
-			for(id in data){
-				history[id]=data[id];
+			console.log('Recieved history:');
+			for(const id in data){
+				addToHistory(data[id],true);
 			}
-			console.log('Recieved history:',history);
 		});
-		socket.on('conf',function(id){
-			history[id]=queue.shift();
-			console.log('Recieved Message Confirmation. ', history);
+		socket.on('conf',async function(payload){
+			let obj=JSON.parse(payload);
+			let data=await decrypt(obj);
+			if(queue[data.timestamp]){
+				delete queue[data.timestamp];
+				console.log('Recieved Message Confirmation. ');
+			}
 		});
+		function checkDropped(){
+			//Cleanup function,identifies failed message sends, informs user
+			let oneMin=1000*30;//minute in ms
+			for(const timestamp in queue){
+				if(Date.now()-timestamp>oneMin){
+					let message=Object.values(history).filter(
+						msg => msg.entry.hasOwnProperty('timestamp') && msg.isSelf && msg.entry.timestamp==timestamp
+						).reduce((a,c)=> c);
+					let id=history.sparseIndexOf(message);
+					delete queue[timestamp];
+					addToHistory('This Message Could not be sent',false,{timestamp:id})
+				}
+			}
+			setTimeout(checkDropped,oneMin);
+		}
+		checkDropped();
 	}
 	
 	
@@ -101,7 +176,7 @@
 			message:encrypted
 		}
 		console.log('Sending Message:',data);
-		queue.push(formatted);
+		queue[formatted.timestamp]=formatted;
 		socket.emit('chat',JSON.stringify(data));
 		return formatted;
 	}
@@ -241,11 +316,15 @@
 		})
 		document.addEventListener('click',async function(e){
 			if(e.target.id==="send"){
+				//Disable further input
 				e.target.disabled=true;
 				let textinput=document.querySelector('#message')
 				textinput.disabled=true;
+				//Send message via socket.
 				let data=await sendChat()
 				if(data){
+					//update data model
+					addToHistory(data,true,{isSelf:true});
 					displayMsg(data,true);
 				}
 				clearInput();

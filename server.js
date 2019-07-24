@@ -187,7 +187,7 @@ io.on("connection",function(socket){
 			console.log(sockets);
 			synchronizeHistory(socket,authObject);
 			socket.emit('authOK',`Joined room ${nicknames.length>0?`with ${nicknames.toString().replace(',',', ')}`:''}`);
-			socket.to(authObject.room).emit('status',`${authObject.nickname} joined the room.`)
+			socket.to(authObject.room).emit('status',`${authObject.nickname} joined the room`)
 		}else{
 			socket.emit('authError')
 		}
@@ -211,13 +211,10 @@ io.on("connection",function(socket){
 		let authorized=await authorize(messageObject);
 		
 		if(authorized){
-			rooms[messageObject.room].msgCount+=1;
-			let id=rooms[messageObject.room].msgCount;
 			let content=messageObject.message;
-			content.id=id;
 			content=JSON.stringify(content);
 			socket.to(messageObject.room).emit('message',content);
-			socket.emit('conf',id)
+			socket.emit('conf',content);		
 		}
 	});
 	socket.on('logout', function(){
