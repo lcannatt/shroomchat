@@ -38,17 +38,7 @@ app.get('/scripts/react.js',function(req,res){
 
 var hour=60*60*1000;//ms for unused cleanup
 //Socket handling
-var rooms={//initialized with room for testing.
-	testroom:{
-		salt:'e27b79c799253a0aa42579fb5c804586',
-		passHash:'$2b$10$zDRkdwmlTCeR.wNc8nw.WOPzsUE2C7XQm9PHD/2RCG.NkYgQa.WUS',
-		internalKey:crypto.randomBytes(32).toString('base64'),
-		sockets:[],
-		active:1,
-		created:new Date(),
-		msgCount:0
-	}
-}
+var rooms={};
 console.log(rooms);
 function prune(){
 	console.log('Pruning unused rooms');
