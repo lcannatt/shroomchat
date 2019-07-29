@@ -16,6 +16,66 @@
 			enumerable:false
 		});
 	}
+	// React Class Components
+	class Message extends React.Component {
+		render() {
+			const {nickname, timestamp, message} = this.props.data.entry;
+			return(
+				<div class="chat-wrapper">
+					<div class={"chat "+(this.props.data.isSelf?"self":"other")}>
+						<div class="chat-header clear">
+							<div class="float-l nickname">
+								{nickname}
+							</div>
+							<div class="float-r timestamp">
+								{new Date(timestamp).toLocaleString()}
+							</div>
+						</div>
+						<div class="chat-body clear">
+							{message}
+							<br/>
+						</div>
+					</div>
+				</div>
+			)
+		}
+	}
+	class Status extends React.Component {
+		render(){
+			const {entry} = this.props.data;
+			return(
+				<div class="chat-wrapper">
+					<div class="status-update">{entry}</div>
+				</div>
+			)
+		}
+	}
+	class MessageHistory extends React.Component{
+		constructor(props){
+			super(props)
+			this.state={
+				history:this.props.history
+			}
+		}
+		updateHistory = (historyObject) => {
+			console.log('setting state',historyObject);
+			this.setState({
+				history:historyObject.history
+			});
+		}
+		render(){
+			let hist=this.state.history;
+			return(
+				<div class="messages-content">
+					{Object.keys(this.state.history).sort().map(
+						key => 
+							hist[key].isMessage?<Message data={hist[key]}/>:<Status data={hist[key]}/>
+						)
+					}
+				</div>
+			)
+		}
+	}
 
 	/*
 	*
@@ -43,9 +103,16 @@
 	//format = {
 	//	[timestamp]:{message object}
 	//	}
-	function addToHistory(entry,isMsg,options={}){
+	
+	/*
+	*
+	* MODEL: History Object Management.
+	*
+	*/
+	function addToHistory(entry,isMsg,options={}){//Adds entry to history array, updates view.
+		let scroller=document.querySelector('.messages-wrapper');
 		let {isSelf,override,timestamp} = options;
-		isSelf=isSelf?isSelf:true;
+		isSelf=isSelf?true:false;
 		override=override?override:false;
 		timestamp=timestamp?timestamp:Date.now();
 		//Wrapper for adding entry to history
@@ -61,13 +128,19 @@
 			entry:entry
 		};
 		console.log(history);
+		window.hist.updateHistory({history:history});//Pass new history to react object
+		scroller.scrollTop=scroller.scrollHeight;
+	}
+	function clearHistory(){// Clears history array, updates view.
+		history=Array();
+		window.hist.updateHistory({history:history});//Pass new history to react object
 	}
 	/*
 	*
 	* SOCKET MANAGEMENT
 	*
 	*/
-	function initSocket(){// create socket instance, set up listeners\
+	function initSocket(){// create socket instance, set up listeners
 		socket = io(window.location.origin);
 		socket.on("connect",function(){
 			console.log("connection opened");
@@ -75,7 +148,7 @@
 		});
 		socket.on("disconnect",function(){
 			addToHistory('Server disconnected',false);
-			displayStatus('Server disconnected');
+			// displayStatus('Server disconnected');
 		});
 		socket.on('handshake',function(serverSalt){
 			salt=serverSalt;
@@ -88,34 +161,28 @@
 			let pgpObject=JSON.parse(payload);
 			let data = await decrypt(pgpObject);
 			addToHistory(data,true,{isSelf:false});
-			console.log('History: ',history);
-			displayMsg(data,false);
 		});
 		socket.on("authError",function(){
 			console.log("cant auth")
 		});
 		socket.on("authOK",function(message){
+			openChat();
 			addToHistory(message,false);
-			openChat(message);
+
 			
 		});
 		socket.on('status',function(status){
 			addToHistory(status,false);
-			displayStatus(status);
 		});
 		socket.on('history-request',async function(payload){
 			let obj=JSON.parse(payload);
 			obj.hist=await(
 				encrypt(
 					JSON.stringify(
-						history.filter(
-							element => element['isMessage']
-							).map(
-								element => element.entry
-							)
-						)
+						Object.keys(history).map(key=>history[key]['isMessage']?history[key].entry:undefined).filter(element => element)
 					)
-				);
+				)
+			);
 			obj.room=roomId;
 			obj.password=hash;
 			console.log('Sending history:',obj);
@@ -124,7 +191,7 @@
 		socket.on('history-response', async function(payload){
 			let obj= JSON.parse(payload);
 			let data=await decrypt(obj);
-			console.log('Recieved history:');
+			console.log('Recieved history:',data);
 			for(const id in data){
 				addToHistory(data[id],true);
 			}
@@ -134,7 +201,7 @@
 			let data=await decrypt(obj);
 			if(queue[data.timestamp]){
 				delete queue[data.timestamp];
-				console.log('Recieved Message Confirmation. ');
+				console.log('Message Confirmed. ');
 			}
 		});
 		function checkDropped(){
@@ -156,7 +223,7 @@
 	}
 	
 	
-	async function sendChat(){//
+	async function sendChat(){//Formats data for transmission, hands off to socket, and returns formatted data for history
 		let input=document.querySelector('#message');
 		let encrypted='';
 		let formatted;
@@ -229,7 +296,7 @@
 	* chat client
 	*
 	*/
-	function openChat(message){
+	function openChat(){
 		let login=document.getElementById('login');
 		let nickInput=document.getElementById('nick')
 		let main=document.getElementById('main');
@@ -240,7 +307,7 @@
 		initChatListeners();
 		chatInit=true;
 		}
-		displayStatus(message);
+		// displayStatus(message);
 		document.querySelector('#message').focus();
 	}
 	function clearInput(){
@@ -250,50 +317,11 @@
 		}
 	}
 	
-	function displayMsg(data,self){
-		let {nickname,timestamp,message}=data;
-		let wrapper=TPR_GEN.newElement('div',{className:'chat-wrapper'})
-		let chat=TPR_GEN.newElement('div',{className:`chat ${(self)?'self':'other'}`});
-		let header=TPR_GEN.newElement('div',{className:'chat-header clear'});
-		let nickSpan=TPR_GEN.newElement('div',{
-			className:'float-l nickname',
-			innerText:nickname
-		});
-		header.appendChild(nickSpan);
-		let dateObj=new Date(timestamp);
-		let timeSpan=TPR_GEN.newElement('div',{
-			className:'float-r timestamp',
-			innerText:dateObj.toLocaleString()
-		});
-		header.appendChild(timeSpan);
-		chat.appendChild(header);
-		let body=TPR_GEN.newElement('div',{
-			className:'chat-body clear',
-			innerText:message
-		})
-		chat.appendChild(body);
-		wrapper.appendChild(chat);
-		let content=document.querySelector('#messages-content');
-		if(content){
-			content.appendChild(wrapper);
-		}
-		wrapper.scrollIntoView();
-	}
-	function displayStatus(status){
-		let wrapper=TPR_GEN.newElement('div',{className:'chat-wrapper'})
-		let statusDiv=TPR_GEN.newElement('div',{className:'status-update',innerText:status});
-		wrapper.appendChild(statusDiv);
-		let content=document.querySelector('#messages-content');
-		if(content){
-			content.appendChild(wrapper);
-		}
-		wrapper.scrollIntoView();
-		
-	}
 	function logout(){
 		let loginForm=document.querySelector('#room-login');
 		socket.emit('logout');
 		loginForm.reset();
+		clearHistory();
 		loginForm.closest('#login').classList.remove('nodisplay');
 		document.querySelector('#main').classList.add('nodisplay');
 		
@@ -325,7 +353,7 @@
 				if(data){
 					//update data model
 					addToHistory(data,true,{isSelf:true});
-					displayMsg(data,true);
+					// displayMsg(data,true);
 				}
 				clearInput();
 				textinput.disabled=false;
@@ -354,5 +382,8 @@
 			}
 		});
 	}
+	//REACT INITIALIZATION!
+
+	ReactDOM.render(<MessageHistory ref={(ref)=>{window.hist=ref;}} history={history}/>, document.querySelector('.messages-scroll'));
 
 })();

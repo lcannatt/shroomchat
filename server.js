@@ -24,6 +24,16 @@ app.get('/scripts/openpgp.min.js',function(req,res){
 app.get('/scripts/sha3.min.js',function(req,res){
 	res.sendFile(path.join(__dirname,'node_modules','js-sha3','build','sha3.min.js'));
 });
+app.get('/scripts/react-dom.js',function(req,res){
+	res.sendFile(path.join(__dirname,'node_modules','react-dom','umd','react-dom.production.min.js'));
+});
+app.get('/scripts/react-dom.js',function(req,res){
+	res.sendFile(path.join(__dirname,'node_modules','react-dom','umd','react-dom.production.min.js'));
+});
+app.get('/scripts/react.js',function(req,res){
+	res.sendFile(path.join(__dirname,'node_modules','react','umd','react.production.min.js'));
+});
+
 
 
 var hour=60*60*1000;//ms for unused cleanup

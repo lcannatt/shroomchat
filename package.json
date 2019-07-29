@@ -4,7 +4,9 @@
   "description": "a socket based chat room with end to end encryption",
   "main": "index.html",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "build": "npx babel src --out-dir ./build --presets react-app/prod && npx webpack"
   },
   "author": "",
   "license": "ISC",
@@ -14,6 +16,22 @@
     "express": "^4.17.1",
     "js-sha3": "^0.8.0",
     "openpgp": "^4.5.5",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
     "socket.io": "^2.2.0"
-  }
+  },
+  "devDependencies": {
+    "babel": "^6.23.0",
+    "babel-cli": "^6.26.0",
+    "babel-loader": "^7.0.0",
+    "babel-preset-react-app": "^3.1.2",
+    "webpack": "^4.38.0",
+    "webpack-cli": "^3.3.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://jimminykrampus@bitbucket.org/jimminykrampus/shroomchat.git"
+  },
+  "keywords": [],
+  "homepage": "https://bitbucket.org/jimminykrampus/shroomchat#readme"
 }
