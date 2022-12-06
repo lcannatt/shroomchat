@@ -13,7 +13,7 @@
   "dependencies": {
     "bcrypt": "^3.0.6",
     "crypto": "^1.0.1",
-    "express": "^4.17.1",
+    "express": "^4.18.2",
     "js-sha3": "^0.8.0",
     "openpgp": "^4.5.5",
     "react": "^16.8.6",
